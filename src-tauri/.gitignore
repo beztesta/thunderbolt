@@ -9,3 +9,6 @@
 # Custom
 .env
 data/*
+
+# Migrations
+migration/target

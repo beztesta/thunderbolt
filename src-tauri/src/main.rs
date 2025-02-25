@@ -5,6 +5,8 @@ mod db;
 mod embedding;
 mod imap_client;
 
+use anyhow::Result;
+
 #[tokio::main]
 async fn main() -> Result<()> {
     // Handle the Result and Option types
