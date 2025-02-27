@@ -1,5 +1,6 @@
 import type { UseChatHelpers } from '@ai-sdk/solid'
-import { For } from 'solid-js'
+import { For, Match, Switch } from 'solid-js'
+import { AgentToolResponse } from './AgentChatResponse'
 
 interface ChatUIProps {
   chatHelpers: UseChatHelpers
@@ -14,45 +15,23 @@ export default function ChatUI({ chatHelpers }: ChatUIProps) {
     <div class="flex flex-col h-full bg-gray-50 overflow-hidden">
       <div class="flex-1 p-4 overflow-y-auto space-y-4">
         <For each={messages()}>
-          {(message, i) =>
-            message.role === 'assistant' ? (
-              <div class="p-4 space-y-2 rounded-tl-lg rounded-tr-lg rounded-br-lg max-w-3/4 bg-white border border-gray-200 mr-auto">
-                <div class="text-gray-700 leading-relaxed">{message.content}</div>
-                <For each={message.parts.filter((part) => part.type === 'tool-invocation')}>
-                  {(part) => {
-                    const { toolName, toolCallId, args } = part.toolInvocation
-
-                    switch (toolName) {
-                      case 'answer':
-                        return (
-                          <div class="space-y-2">
-                            <div class="text-gray-700 leading-relaxed">{args.text}</div>
-                          </div>
-                        )
-                      case 'search':
-                        return (
-                          <div class="space-y-2">
-                            <div class="bg-blue-50 border border-blue-200 p-2 rounded-md text-gray-700 leading-relaxed italic flex items-center">Searching for "{args.query}"...</div>
-                          </div>
-                        )
-                      default:
-                        return (
-                          <div class="space-y-2">
-                            <div class="text-gray-700 leading-relaxed">{args.text}</div>
-                          </div>
-                        )
-                    }
-                  }}
-                </For>
-              </div>
-            ) : (
-              <div class="p-4 rounded-tl-lg rounded-tr-lg rounded-bl-lg max-w-3/4 bg-indigo-100 text-gray-800 ml-auto">
-                <div class="space-y-2">
-                  <div class="text-gray-700 leading-relaxed">{message.content}</div>
+          {(message, i) => (
+            <Switch fallback={null}>
+              <Match when={message.role === 'assistant'}>
+                <div class="p-4 space-y-2 rounded-tl-lg rounded-tr-lg rounded-br-lg max-w-3/4 bg-white border border-gray-200 mr-auto">
+                  {message.content && <div class="text-gray-700 leading-relaxed">{message.content}</div>}
+                  <For each={message.parts.filter((part) => part.type === 'tool-invocation')}>{(part) => <AgentToolResponse part={part} />}</For>
                 </div>
-              </div>
-            )
-          }
+              </Match>
+              <Match when={message.role === 'user'}>
+                <div class="p-4 rounded-tl-lg rounded-tr-lg rounded-bl-lg max-w-3/4 bg-indigo-100 text-gray-800 ml-auto">
+                  <div class="space-y-2">
+                    <div class="text-gray-700 leading-relaxed">{message.content}</div>
+                  </div>
+                </div>
+              </Match>
+            </Switch>
+          )}
         </For>
       </div>
 

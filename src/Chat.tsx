@@ -116,7 +116,7 @@ const fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
     //   structuredOutputs: true,
     // }),
     model: openai('gpt-4o', {
-      // structuredOutputs: true,
+      structuredOutputs: true,
     }),
     system: p2,
     messages: processedMessages,
@@ -149,7 +149,7 @@ const fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
     onFinish: async () => {
       // console.log('done', result.reasoning, result.finishReason, result.warnings, result.text, result.toolResults)
     },
-    // toolChoice: 'required',
+    toolChoice: 'required',
   })
 
   return result.toDataStreamResponse()
@@ -162,7 +162,7 @@ export default function App() {
     // streamProtocol: 'text',
   })
 
-  // console.log('messages', chatHelpers.messages())
+  console.log('messages', chatHelpers.messages())
 
   return <ChatUI chatHelpers={chatHelpers} />
 }
