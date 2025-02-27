@@ -65,11 +65,6 @@ const p2 = `
 
 const ollama = createOpenAI({
   baseURL: 'http://localhost:11434/v1',
-
-  // fetch: async (input: RequestInfo | URL, init: RequestInit = {}) => {
-  //   console.log('tauri fetch', input, init)
-  //   return tauriFetch(input, init)
-  // },
   // compatibility: 'compatible',
   apiKey: 'ollama',
 })
@@ -79,10 +74,6 @@ const fetch = async (input: RequestInfo | URL, init: RequestInit = {}) => {
 
   console.log('openaiApiKey', openaiApiKey)
   const openai = createOpenAI({
-    // fetch: async (input: RequestInfo | URL, init: RequestInit = {}) => {
-    //   console.log('tauri fetch', input, init)
-    //   return tauriFetch(input, init)
-    // },
     apiKey: await invoke('get_openai_api_key'),
   })
 
