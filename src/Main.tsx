@@ -2,7 +2,6 @@ import { normalizeProps, useMachine } from '@zag-js/solid'
 import * as splitter from '@zag-js/splitter'
 import { createMemo, createSignal, createUniqueId } from 'solid-js'
 
-import { A } from '@solidjs/router'
 import './App.css'
 import Chat from './Chat'
 import { createTray } from './lib/tray'
@@ -33,9 +32,6 @@ export default function App() {
       <header class="bg-indigo-600 text-white p-4 shadow-md flex justify-between items-center">
         <h1 class="text-2xl font-bold">Split Pane Demo</h1>
         <div class="flex gap-2">
-          <A href="/settings" class="inline-block bg-indigo-600 text-white px-6 py-3 rounded-md hover:bg-indigo-700 transition-colors font-medium">
-            Settings
-          </A>
           <button onClick={togglePanel} class="bg-white text-indigo-600 px-4 py-2 rounded-md hover:bg-indigo-100 transition-colors font-medium">
             {expanded() ? 'Hide' : 'Show'} Sidebar
           </button>
