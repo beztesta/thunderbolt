@@ -94,10 +94,11 @@ keyring = { version = "3.6.2", features = [
 tauri-plugin-fs = "2"
 once_cell = "1.20.3"
 futures-core = "0.3.31"
-libsql = "0.6.0"
+libsql = { version = "0.6.0", features = ["encryption"] }
 thiserror = "2.0.12"
 base64 = "0.22.1"
 indexmap = "2.7.1"
+bytes = "1.10.1"
 
 [profile.dev]
 incremental = true # Compile your binary in smaller steps.

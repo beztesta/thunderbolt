@@ -3,8 +3,9 @@
 
 use anyhow::Result;
 use base64::{engine::general_purpose::STANDARD, Engine as _};
+use bytes::Bytes;
 use indexmap::IndexMap;
-use libsql::{Connection, Value};
+use libsql::{Cipher, Connection, EncryptionConfig, Value};
 use serde_json::Value as JsonValue;
 use std::env;
 use tauri::{command, ActivationPolicy, Manager, State};
@@ -71,7 +72,16 @@ async fn init_libsql(state: State<'_, Mutex<AppState>>, path: String) -> Result<
             .map_err(|e| format!("Problem creating directory: {}", e))?;
     }
 
+    let cipher = Cipher::Aes256Cbc;
+    let encryption_key_bytes = Bytes::from("your_secure_encryption_key_here");
+
+    let encryption_config = EncryptionConfig {
+        cipher,
+        encryption_key: encryption_key_bytes,
+    };
+
     let database = libsql::Builder::new_local(&fqdb)
+        .encryption_config(encryption_config) // Apply encryption configuration
         .build()
         .await
         .map_err(|e| format!("Failed to build database: {}", e))?;

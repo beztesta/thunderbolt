@@ -18,6 +18,23 @@ const init = async () => {
   const libsql = await Database.load('data/local.db')
   console.log('🚀 ~ db:', libsql)
 
+  // await migrate()
+
+  // Create the setting table if it doesn't exist
+  await libsql.execute(`
+    CREATE TABLE IF NOT EXISTS \`setting\` (
+      \`id\` integer PRIMARY KEY NOT NULL,
+      \`value\` text,
+      \`updated_at\` text DEFAULT 'CURRENT_TIMESTAMP',
+      \`embedding\` vector(32)
+    );
+  `)
+
+  // Create the unique index if it doesn't exist
+  await libsql.execute(`
+    CREATE UNIQUE INDEX IF NOT EXISTS \`setting_id_unique\` ON \`setting\` (\`id\`);
+  `)
+
   console.log('00000')
 
   await db.insert(settings).values([{ embedding: sql`vector32(${JSON.stringify([1.1, 2.2, 3.3])})` }])
@@ -34,16 +51,6 @@ const init = async () => {
   console.log('bbbb')
 
   console.log(res)
-
-  const topK = await db
-    .select({
-      id: settings.id,
-      distance: sql`distance`,
-    })
-    .from(sql`vector_top_k('vector_index', vector32(${JSON.stringify([2.2, 3.3, 4.4])}), 5)`)
-    .leftJoin(settings, sql`${settings}.id = id`)
-
-  console.log(topK)
 }
 
 export default function App({ children }: { children?: JSXElement }) {
