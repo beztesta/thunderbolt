@@ -13,7 +13,7 @@ type SettingsContextType = {
 
 const SettingsContext = createContext<SettingsContextType | undefined>(undefined)
 
-export function SettingsProvider(props: { section: string; children: ReactNode }) {
+export function SettingsProvider(props: { initialSettings: Settings; section: string; children: ReactNode }) {
   const drizzleContext = useDrizzle()
   const queryClient = useQueryClient()
 
@@ -22,8 +22,9 @@ export function SettingsProvider(props: { section: string; children: ReactNode }
   const { data: settings, isLoading } = useQuery({
     queryKey: settingsQueryKey,
     queryFn: async () => {
-      return await dalGetSettings<Settings>(drizzleContext.db, props.section)
+      return (await dalGetSettings<Settings>(drizzleContext.db, props.section)) || {}
     },
+    initialData: props.initialSettings,
   })
 
   const { mutateAsync } = useMutation({

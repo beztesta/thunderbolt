@@ -6,21 +6,31 @@ import ChatLayout from '@/chats/layout'
 import AccountsSettingsPage from '@/settings/accounts'
 import Settings from '@/settings/index'
 import ModelsSettingsPage from '@/settings/models'
+import { SqliteRemoteDatabase } from 'drizzle-orm/sqlite-proxy'
 import { useEffect, useState } from 'react'
 import ChatNewPage from './chats/new'
+import { getSettings } from './dal'
 import { initializeDrizzleDatabase } from './db/database'
 import { migrate } from './db/migrate'
 import { DrizzleProvider } from './db/provider'
-import AppLayout from './layout'
+import * as schema from './db/schema'
+import Layout from './layout'
 import { createAppDataDir } from './lib/fs'
+import Database from './lib/libsql'
 import { createTray } from './lib/tray'
+import Loading from './loading'
 import SettingsLayout from './settings/layout'
 import { SettingsProvider } from './settings/provider'
-import { DrizzleContextType } from './types'
-
+import { Settings as SettingsType } from './types'
 const queryClient = new QueryClient()
 
-const init = async () => {
+type InitData = {
+  db: SqliteRemoteDatabase<typeof schema>
+  sqlite: Database
+  settings: SettingsType
+}
+
+const init = async (): Promise<InitData> => {
   createTray()
   createAppDataDir()
 
@@ -28,30 +38,33 @@ const init = async () => {
 
   await migrate({ sqlite })
 
+  const settings = (await getSettings<SettingsType>(db, 'main')) || {}
+
   return {
     db,
     sqlite,
+    settings,
   }
 }
 
 export const App = () => {
-  const [context, setContext] = useState<DrizzleContextType>()
+  const [initData, setInitData] = useState<InitData>()
 
   useEffect(() => {
-    init().then(setContext)
+    init().then(setInitData)
   }, [])
 
-  if (!context) {
-    return <div>Loading...</div>
+  if (!initData) {
+    return <Loading />
   }
 
   return (
     <QueryClientProvider client={queryClient}>
-      <DrizzleProvider context={context}>
-        <SettingsProvider section="main">
+      <DrizzleProvider context={{ db: initData.db, sqlite: initData.sqlite }}>
+        <SettingsProvider initialSettings={initData.settings} section="main">
           <BrowserRouter>
             <Routes>
-              <Route path="/" element={<AppLayout />}>
+              <Route path="/" element={<Layout />}>
                 {/* Home routes with HomeLayout */}
                 <Route element={<ChatLayout />}>
                   <Route index element={<ChatNewPage />} />
