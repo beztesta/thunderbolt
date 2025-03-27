@@ -89,3 +89,5 @@ export type ParsedEmailHeader = {
   offset_end: number
   offset_field: number
 }
+
+export type SideviewType = 'message' | 'thread'

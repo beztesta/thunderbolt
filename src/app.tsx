@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router'
 
 import ChatDetailPage from '@/chats/detail'
-import ChatLayout from '@/chats/layout'
+import ChatLayout from '@/chats/layout2'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import AccountsSettingsPage from '@/settings/accounts'
 import Settings from '@/settings/index'
@@ -27,6 +27,7 @@ import { ImapSyncClient, ImapSyncProvider } from './sync'
 import { InitData, Settings as SettingsType } from './types'
 import UiKitPage from './ui-kit'
 import WelcomePage from './welcome'
+import { SideviewProvider } from './sideview/provider'
 
 const queryClient = new QueryClient()
 
@@ -91,32 +92,34 @@ export const App = () => {
             <ImapSyncProvider client={initData.imapSync}>
               <SettingsProvider initialSettings={initData.settings} section="main">
                 <SidebarProvider>
-                  <BrowserRouter>
-                    <Routes>
-                      <Route path="/" element={<Layout />}>
-                        {/* Home routes with HomeLayout */}
-                        <Route element={<ChatLayout />}>
-                          {/* <Route index element={<ChatNewPage />} /> */}
-                          <Route index element={<WelcomePage />} />
-                          <Route path="chats/:chatThreadId" element={<ChatDetailPage />} />
-                        </Route>
-
-                        {/* Settings routes with SettingsLayout */}
-                        <Route path="settings" element={<SettingsLayout />}>
-                          <Route index element={<Settings />} />
-                          <Route path="accounts" element={<AccountsSettingsPage />} />
-                          <Route path="models" element={<ModelsLayout />}>
-                            <Route index element={<Navigate to="/settings/models/new" replace />} />
-                            <Route path="new" element={<NewModelPage />} />
-                            <Route path=":modelId" element={<ModelDetailPage />} />
+                  <SideviewProvider>
+                    <BrowserRouter>
+                      <Routes>
+                        <Route path="/" element={<Layout />}>
+                          {/* Home routes with HomeLayout */}
+                          <Route element={<ChatLayout />}>
+                            {/* <Route index element={<ChatNewPage />} /> */}
+                            <Route index element={<WelcomePage />} />
+                            <Route path="chats/:chatThreadId" element={<ChatDetailPage />} />
                           </Route>
-                        </Route>
 
-                        <Route path="ui-kit" element={<UiKitPage />} />
-                        <Route path="devtools" element={<DevToolsPage />} />
-                      </Route>
-                    </Routes>
-                  </BrowserRouter>
+                          {/* Settings routes with SettingsLayout */}
+                          <Route path="settings" element={<SettingsLayout />}>
+                            <Route index element={<Settings />} />
+                            <Route path="accounts" element={<AccountsSettingsPage />} />
+                            <Route path="models" element={<ModelsLayout />}>
+                              <Route index element={<Navigate to="/settings/models/new" replace />} />
+                              <Route path="new" element={<NewModelPage />} />
+                              <Route path=":modelId" element={<ModelDetailPage />} />
+                            </Route>
+                          </Route>
+
+                          <Route path="ui-kit" element={<UiKitPage />} />
+                          <Route path="devtools" element={<DevToolsPage />} />
+                        </Route>
+                      </Routes>
+                    </BrowserRouter>
+                  </SideviewProvider>
                 </SidebarProvider>
               </SettingsProvider>
             </ImapSyncProvider>

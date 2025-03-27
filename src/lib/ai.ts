@@ -99,13 +99,12 @@ export const createModel = (modelConfig: Model): LanguageModelV1 => {
       if (!modelConfig.url) {
         throw new Error('No URL provided')
       }
-      console.log('Using config', modelConfig)
-      const openai = createOpenAICompatible({
+      const openaiCompatible = createOpenAICompatible({
         name: 'custom',
         baseURL: modelConfig.url,
         apiKey: modelConfig.api_key ?? undefined,
       })
-      return openai(modelConfig.model) as LanguageModelV1
+      return openaiCompatible(modelConfig.model) as LanguageModelV1
     }
     default: {
       throw new Error(`Unsupported model provider: ${modelConfig.provider}`)

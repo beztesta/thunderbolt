@@ -1,0 +1,55 @@
+'use client'
+
+import { SideviewType } from '@/types'
+import { createContext, useContext, useEffect, useState } from 'react'
+
+interface SideviewContextType {
+  sideviewType: SideviewType | null
+  sideviewId: string | null
+  setSideview: (sideviewType: SideviewType | null, sideviewId: string | null) => void
+}
+
+const SideviewContext = createContext<SideviewContextType | undefined>(undefined)
+
+interface SideviewProviderProps {
+  children: React.ReactNode
+  sideviewType?: SideviewType | null
+  sideviewId?: string | null
+}
+
+export function SideviewProvider({ children, sideviewType: initialSideviewType = null, sideviewId: initialSideviewId = null }: SideviewProviderProps) {
+  const [sideviewType, setSideviewType] = useState<SideviewType | null>(initialSideviewType)
+  const [sideviewId, setSideviewId] = useState<string | null>(initialSideviewId)
+  const setSideview = (type: SideviewType | null, id: string | null) => {
+    setSideviewType(type)
+    setSideviewId(id)
+  }
+
+  useEffect(() => {
+    if (sideviewType && sideviewId) {
+      window.history.pushState(null, '', `/${sideviewType}s/${encodeURIComponent(sideviewId)}`)
+    } else {
+      window.history.pushState(null, '', '/')
+    }
+  }, [sideviewType, sideviewId])
+
+  return (
+    <SideviewContext.Provider
+      value={{
+        sideviewType,
+        sideviewId,
+        setSideview,
+      }}
+    >
+      {children}
+    </SideviewContext.Provider>
+  )
+}
+
+export function useSideview() {
+  const context = useContext(SideviewContext)
+  if (context === undefined) {
+    throw new Error('useSideview must be used within a SideviewProvider')
+  }
+  return context
+}
