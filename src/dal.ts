@@ -1,6 +1,6 @@
 import { eq } from 'drizzle-orm'
 import { v7 as uuidv7 } from 'uuid'
-import { emailMessagesTable, emailThreadsTable, modelsTable, settingsTable } from './db/tables'
+import { accountsTable, emailMessagesTable, emailThreadsTable, modelsTable, settingsTable } from './db/tables'
 import { DrizzleContextType, EmailThreadWithMessagesAndAddresses } from './types'
 
 export const setSettings = async (db: DrizzleContextType['db'], key: string, value: any) => {
@@ -26,6 +26,20 @@ export const getSettings = async <T>(db: DrizzleContextType['db'], key: string):
   if (result.length === 0) return null
 
   return JSON.parse(result[0].value as string) as T
+}
+
+export const seedAccounts = async (db: DrizzleContextType['db']) => {
+  const accounts = await db.select().from(accountsTable)
+  if (accounts.length === 0) {
+    await db.insert(accountsTable).values({
+      id: uuidv7(),
+      type: 'imap',
+      imapHostname: 'imap.thundermail.com',
+      imapPort: 993,
+      imapUsername: 'you@tb.pro',
+      imapPassword: 'password',
+    })
+  }
 }
 
 export const seedModels = async (db: DrizzleContextType['db']) => {

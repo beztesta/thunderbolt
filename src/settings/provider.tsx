@@ -1,8 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 
-import { db } from '@/db'
 import { settingsTable } from '@/db/tables'
 import { eq } from 'drizzle-orm'
+import { useDrizzle } from '@/db/provider'
 
 export function useSetting<T = string>(
   key: string
@@ -11,6 +11,7 @@ export function useSetting<T = string>(
   isLoading: boolean
   setValue: (value: T) => Promise<void>
 } {
+  const { db } = useDrizzle()
   const queryClient = useQueryClient()
 
   const { data: value, isLoading } = useQuery<T | null>({

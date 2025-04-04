@@ -10,7 +10,7 @@ import ModelDetailPage from '@/settings/models/detail'
 import ModelsLayout from '@/settings/models/layout'
 import NewModelPage from '@/settings/models/new'
 import { useEffect, useState } from 'react'
-import { getSettings, seedModels } from './dal'
+import { getSettings, seedAccounts, seedModels } from './dal'
 import { initializeDrizzleDatabase } from './db/database'
 import { migrate } from './db/migrate'
 import { DrizzleProvider } from './db/provider'
@@ -39,6 +39,7 @@ const init = async (): Promise<InitData> => {
 
   const settings = (await getSettings<SettingsType>(db, 'main')) || {}
 
+  await seedAccounts(db)
   await seedModels(db)
 
   const imap = new ImapClient()

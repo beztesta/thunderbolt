@@ -1,5 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -24,6 +25,8 @@ const formSchema = z.object({
 export default function AccountsSettingsPage() {
   const { db } = useDrizzle()
   const queryClient = useQueryClient()
+  const [showDialog, setShowDialog] = React.useState(false)
+  const [showSaved, setShowSaved] = React.useState(false)
 
   // Add state for the selected account
   const [selectedAccount, setSelectedAccount] = React.useState<string | null>(null)
@@ -83,6 +86,8 @@ export default function AccountsSettingsPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] })
+      setShowSaved(true)
+      setTimeout(() => setShowSaved(false), 2000)
     },
   })
 
@@ -109,6 +114,7 @@ export default function AccountsSettingsPage() {
   }, [currentAccount, form])
 
   const onSubmit = async (values: z.infer<typeof formSchema>) => {
+    setShowSaved(false)
     await updateAccountMutation.mutateAsync(values)
   }
 
@@ -117,10 +123,17 @@ export default function AccountsSettingsPage() {
       <div className="flex flex-col gap-4 p-4 w-full max-w-[760px] mx-auto">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-bold">Accounts</h2>
-          <Button variant="outline" size="icon" onClick={() => createAccountMutation.mutate()} disabled={createAccountMutation.isPending}>
+          <Button variant="outline" size="icon" onClick={() => setShowDialog(true)}>
             <Plus />
           </Button>
         </div>
+
+        <Dialog open={showDialog} onOpenChange={setShowDialog}>
+          <DialogContent>
+            <DialogTitle>Multiple Accounts</DialogTitle>
+            <DialogDescription>Support for multiple accounts is coming soon!</DialogDescription>
+          </DialogContent>
+        </Dialog>
 
         {accounts.length > 0 && (
           <Select value={selectedAccount || undefined} onValueChange={setSelectedAccount}>
@@ -204,8 +217,16 @@ export default function AccountsSettingsPage() {
                   )}
                 />
 
-                <Button type="submit" disabled={updateAccountMutation.isPending}>
-                  {updateAccountMutation.isPending ? 'Saving...' : 'Save'}
+                <Button
+                  type="submit"
+                  disabled={updateAccountMutation.isPending || !form.formState.isDirty}
+                  onClick={() => {
+                    if (form.formState.isDirty) {
+                      setShowSaved(false)
+                    }
+                  }}
+                >
+                  {updateAccountMutation.isPending ? 'Saving...' : showSaved ? 'Saved!' : 'Save'}
                 </Button>
               </form>
             </Form>
