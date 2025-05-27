@@ -23,21 +23,21 @@ export const seedModels = async (db: DrizzleContextType['db']) => {
     const seedData = [
       {
         id: uuidv7(),
-        name: 'gpt-4o',
-        provider: 'openai' as const,
-        model: 'gpt-4o',
+        name: 'Llama 3.1 (70B)',
+        provider: 'deepinfra' as const,
+        model: 'meta-llama/Meta-Llama-3.1-70B-Instruct',
         isSystem: 1,
       },
       {
         id: uuidv7(),
-        name: 'o3-mini',
-        provider: 'openai' as const,
-        model: 'o3-mini',
+        name: 'Qwen3 (235B)',
+        provider: 'deepinfra' as const,
+        model: 'Qwen/Qwen3-235B-A22B',
         isSystem: 1,
       },
       {
         id: uuidv7(),
-        name: 'llama-3.2',
+        name: 'Llama 3.2 (3B)',
         provider: 'openai_compatible' as const,
         model: 'llama3.2:3b-instruct-q4_1',
         url: 'http://localhost:11434/v1',

@@ -147,7 +147,7 @@ export default function ChatSidebar() {
                 <SidebarMenuItem>
                   <Link to={`/chats/${thread.id}`}>
                     <SidebarMenuButton isActive={thread.id === currentChatThreadId} className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground cursor-pointer">
-                      {thread.title}
+                      <span className="truncate">{thread.title}</span>
                       <DropdownMenuTrigger asChild>
                         <MoreHorizontal className="ml-auto" />
                       </DropdownMenuTrigger>

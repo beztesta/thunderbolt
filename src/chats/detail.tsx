@@ -1,9 +1,10 @@
 import { useDrizzle } from '@/db/provider'
-import { chatMessagesTable } from '@/db/tables'
+import { chatMessagesTable, chatThreadsTable, modelsTable } from '@/db/tables'
+import { createModel } from '@/lib/ai'
 import { convertDbChatMessageToUIMessage, convertUIMessageToDbChatMessage } from '@/lib/utils'
 import { SaveMessagesFunction } from '@/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { UIMessage } from 'ai'
+import { UIMessage, generateText } from 'ai'
 import { eq } from 'drizzle-orm'
 import { useParams } from 'react-router'
 import Chat from './chat'
@@ -28,15 +29,70 @@ export default function ChatDetailPage() {
 
   const addMessagesMutation = useMutation({
     mutationFn: async (messages: UIMessage[]) => {
+      if (!params.chatThreadId) {
+        throw new Error('No chat thread ID')
+      }
+
       const dbChatMessages = messages.map((message) => convertUIMessageToDbChatMessage(message, params.chatThreadId!))
 
-      return await db.insert(chatMessagesTable).values(dbChatMessages).onConflictDoNothing({
+      const thread = await db.select().from(chatThreadsTable).where(eq(chatThreadsTable.id, params.chatThreadId!)).get()
+
+      if (!thread) {
+        throw new Error('Thread not found')
+      }
+
+      // Insert messages
+      await db.insert(chatMessagesTable).values(dbChatMessages).onConflictDoNothing({
         target: chatMessagesTable.id,
       })
+
+      if (thread.title !== 'New Chat') {
+        return dbChatMessages
+      }
+
+      try {
+        // @todo: use different model
+        const llama3Model = await db.select().from(modelsTable).where(eq(modelsTable.model, 'meta-llama/Meta-Llama-3.1-70B-Instruct')).get()
+
+        if (!llama3Model) {
+          throw new Error('No llama3 model found')
+        }
+
+        // Generate a title based on the first message
+        const firstMessage = messages.find((msg) => msg.role === 'user')
+        if (!firstMessage) {
+          throw new Error('No first message found')
+        }
+
+        // Extract text content from message parts
+        const messageContent =
+          firstMessage.parts
+            ?.filter((part) => part.type === 'text')
+            .map((part) => (part as any).text)
+            .join(' ') || ''
+
+        if (messageContent) {
+          const model = createModel(llama3Model)
+
+          const { text } = await generateText({
+            model,
+            prompt: `Generate a concise title-cased title (max 30 characters) for a chat conversation that starts with this message: "${messageContent}". Return only the title, no quotes or punctuation.`,
+          })
+
+          // Update the thread title
+          await db.update(chatThreadsTable).set({ title: text.trim() }).where(eq(chatThreadsTable.id, params.chatThreadId!))
+        }
+      } catch (error) {
+        console.error('Error generating title:', error)
+      }
+
+      return dbChatMessages
     },
     onSuccess: () => {
       // Invalidate and refetch messages after adding a new one
       queryClient.invalidateQueries({ queryKey: ['chatMessages', params.chatThreadId] })
+      // Also invalidate chat threads to update the sidebar
+      queryClient.invalidateQueries({ queryKey: ['chatThreads'] })
     },
   })
 

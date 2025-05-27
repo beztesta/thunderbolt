@@ -105,7 +105,7 @@ export const createModel = (modelConfig: Model): LanguageModel => {
 
 export const aiFetchStreamingResponse = async ({ init, saveMessages, model: modelConfig }: AiFetchStreamingResponseOptions) => {
   try {
-    const baseModel = await createModel(modelConfig)
+    const baseModel = createModel(modelConfig)
 
     const wrappedModel = wrapLanguageModel({
       model: baseModel,
