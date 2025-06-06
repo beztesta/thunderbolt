@@ -310,22 +310,14 @@ jobs:
         with:
           fetch-depth: 0 # Fetch all history for proper tagging
 
-      - name: Create Release Tag
-        id: create-tag
-        if: success()
+      - name: Get version info
+        id: get-version
         run: |
           # Extract version from RC tag (e.g., v1.0.0-rc1 -> v1.0.0)
-          VERSION=${GITHUB_REF#refs/tags/}
-          VERSION=${VERSION%-rc*}
-          echo "final_version=$VERSION" >> $GITHUB_OUTPUT
-
-          # Configure git
-          git config --global user.name 'GitHub Actions'
-          git config --global user.email 'github-actions@github.com'
-
-          # Create and push the final release tag
-          git tag $VERSION
-          git push origin $VERSION
+          RC_VERSION=${GITHUB_REF#refs/tags/}
+          FINAL_VERSION=${RC_VERSION%-rc*}
+          echo "rc_version=$RC_VERSION" >> $GITHUB_OUTPUT
+          echo "final_version=$FINAL_VERSION" >> $GITHUB_OUTPUT
 
       - name: publish release to CrabNebula
         uses: crabnebula-dev/cloud-release@v0
@@ -339,9 +331,9 @@ jobs:
           tag_name: ${{ needs.draft.outputs.version }}
           draft: false
           prerelease: false
-          name: Release ${{ steps.create-tag.outputs.final_version }}
+          name: Release ${{ steps.get-version.outputs.final_version }}
           body: |
-            ## Release ${{ steps.create-tag.outputs.final_version }}
+            ## Release ${{ steps.get-version.outputs.final_version }}
             
             ### Downloads
             
@@ -355,3 +347,13 @@ jobs:
             ### Release Notes
             
             _Add your release notes here_
+            
+            ---
+            
+            **Note:** This release was built from RC tag `${{ steps.get-version.outputs.rc_version }}`. 
+            
+            To create the final release tag after verification:
+            ```bash
+            git tag ${{ steps.get-version.outputs.final_version }}
+            git push origin ${{ steps.get-version.outputs.final_version }}
+            ```
