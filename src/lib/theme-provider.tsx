@@ -1,3 +1,7 @@
+import { settingsTable } from '@/db/tables'
+import { useDatabase } from '@/hooks/use-database'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { eq } from 'drizzle-orm'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
 type Theme = 'dark' | 'light' | 'system'
@@ -21,7 +25,38 @@ const initialState: ThemeProviderState = {
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState)
 
 export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 'ui-theme', ...props }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(() => (localStorage.getItem(storageKey) as Theme) || defaultTheme)
+  const { db } = useDatabase()
+  const queryClient = useQueryClient()
+  const [theme, setTheme] = useState<Theme>(defaultTheme)
+
+  const { data: savedTheme } = useQuery({
+    queryKey: ['theme'],
+    queryFn: async () => {
+      const result = await db.select().from(settingsTable).where(eq(settingsTable.key, storageKey))
+      return (result[0]?.value as Theme) || defaultTheme
+    },
+  })
+
+  useEffect(() => {
+    if (savedTheme) {
+      setTheme(savedTheme)
+    }
+  }, [savedTheme])
+
+  const saveThemeMutation = useMutation({
+    mutationFn: async (newTheme: Theme) => {
+      await db
+        .insert(settingsTable)
+        .values({ key: storageKey, value: newTheme })
+        .onConflictDoUpdate({
+          target: settingsTable.key,
+          set: { value: newTheme },
+        })
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['theme-setting'] })
+    },
+  })
 
   useEffect(() => {
     const root = window.document.documentElement
@@ -58,8 +93,8 @@ export function ThemeProvider({ children, defaultTheme = 'system', storageKey = 
   const value = {
     theme,
     setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme)
       setTheme(theme)
+      saveThemeMutation.mutate(theme)
     },
   }
 

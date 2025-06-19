@@ -160,9 +160,9 @@ export const App = () => {
   }
 
   return (
-    <ThemeProvider defaultTheme="system" storageKey="thunderbolt-ui-theme">
-      <TrayProvider tray={initData.tray} window={initData.window}>
-        <QueryClientProvider client={queryClient}>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="system" storageKey="thunderbolt-ui-theme">
+        <TrayProvider tray={initData.tray} window={initData.window}>
           <MCPProvider>
             <ImapProvider client={initData.imap}>
               <ImapSyncProvider client={initData.imapSync}>
@@ -174,8 +174,8 @@ export const App = () => {
               </ImapSyncProvider>
             </ImapProvider>
           </MCPProvider>
-        </QueryClientProvider>
-      </TrayProvider>
-    </ThemeProvider>
+        </TrayProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   )
 }
