@@ -1,10 +1,10 @@
 import { chatMessagesTable, chatThreadsTable, modelsTable, settingsTable } from '@/db/tables'
 import { useDatabase } from '@/hooks/use-database'
-import { createModel } from '@/lib/ai'
+import { generateTitle } from '@/lib/title-generator'
 import { convertDbChatMessageToUIMessage, convertUIMessageToDbChatMessage } from '@/lib/utils'
 import { SaveMessagesFunction } from '@/types'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { UIMessage, generateText } from 'ai'
+import { UIMessage } from 'ai'
 import { eq, sql } from 'drizzle-orm'
 import { useParams } from 'react-router'
 import Chat from './chat'
@@ -14,6 +14,25 @@ export default function ChatDetailPage() {
   const { db } = useDatabase()
   const queryClient = useQueryClient()
 
+  const updateThreadTitle = async (messages: UIMessage[], threadId: string) => {
+    const firstUserMessage = messages.find((msg) => msg.role === 'user')
+    if (!firstUserMessage) return
+
+    const textContent = firstUserMessage.parts
+      ?.filter((part) => part.type === 'text')
+      .map((part) => part.text)
+      .join(' ')
+
+    if (!textContent) return
+
+    try {
+      const title = await generateTitle(textContent)
+      await db.update(chatThreadsTable).set({ title }).where(eq(chatThreadsTable.id, threadId))
+      queryClient.invalidateQueries({ queryKey: ['chatThreads'] })
+    } catch (error) {
+      console.error('Error generating title:', error)
+    }
+  }
   const {
     data: messages,
     isLoading,
@@ -41,12 +60,12 @@ export default function ChatDetailPage() {
         throw new Error('Thread not found')
       }
 
-      // Check if this is the first message and if we're using a confidential model
+      // Handle encryption for first message with confidential model
       const existingMessages = await db.select().from(chatMessagesTable).where(eq(chatMessagesTable.chatThreadId, params.chatThreadId!)).limit(1)
 
       if (existingMessages.length === 0 && !thread.isEncrypted) {
-        // Get the selected model to check if it's confidential
         const selectedModelId = await db.select().from(settingsTable).where(eq(settingsTable.key, 'selected_model')).get()
+
         if (selectedModelId) {
           const model = await db
             .select()
@@ -54,8 +73,7 @@ export default function ChatDetailPage() {
             .where(eq(modelsTable.id, selectedModelId.value as string))
             .get()
 
-          if (model && model.isConfidential) {
-            // Update thread to be encrypted
+          if (model?.isConfidential) {
             await db.update(chatThreadsTable).set({ isEncrypted: 1 }).where(eq(chatThreadsTable.id, params.chatThreadId!))
           }
         }
@@ -74,48 +92,9 @@ export default function ChatDetailPage() {
           },
         })
 
-      if (thread.title !== 'New Chat') {
-        return dbChatMessages
-      }
-
-      try {
-        // Generate a title based on the first message
-        const firstMessage = messages.find((msg) => msg.role === 'user')
-        if (!firstMessage) {
-          throw new Error('No first message found')
-        }
-
-        // Extract text content from message parts
-        const messageContent =
-          firstMessage.parts
-            ?.filter((part) => part.type === 'text')
-            .map((part) => (part as any).text)
-            .join(' ') || ''
-
-        if (messageContent) {
-          const model = await createModel({
-            id: 'system',
-            name: 'System',
-            provider: 'thunderbolt',
-            model: 'llama-v3p1-70b-instruct',
-            url: null,
-            apiKey: null,
-            isSystem: 1,
-            enabled: 1,
-            toolUsage: 0,
-            isConfidential: 0,
-          })
-
-          const { text } = await generateText({
-            model,
-            prompt: `Generate a concise title-cased title (max 30 characters) for a chat conversation that starts with this message: "${messageContent}". Return only the title, no quotes or punctuation.`,
-          })
-
-          // Update the thread title
-          await db.update(chatThreadsTable).set({ title: text.trim() }).where(eq(chatThreadsTable.id, params.chatThreadId!))
-        }
-      } catch (error) {
-        console.error('Error generating title:', error)
+      // Generate title in background if needed
+      if (thread.title === 'New Chat') {
+        updateThreadTitle(messages, params.chatThreadId!)
       }
 
       return dbChatMessages

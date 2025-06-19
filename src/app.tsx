@@ -25,6 +25,7 @@ import Layout from './layout'
 import { createAppDataDir } from './lib/fs'
 import { MCPProvider } from './lib/mcp-provider'
 import { getDatabasePath, getDatabaseType } from './lib/platform'
+import { initializeTitleGenerator } from './lib/title-generator'
 import { TrayManager, TrayProvider } from './lib/tray'
 import Loading from './loading'
 import SettingsLayout from './settings/layout'
@@ -68,10 +69,13 @@ function AppContent({ initData }: { initData: InitData }) {
 }
 
 const init = async (): Promise<InitData> => {
+  // Start model download immediately in the background (non-blocking)
+  initializeTitleGenerator()
+
   const appDataDirPath = await createAppDataDir()
   const databaseType = getDatabaseType()
   const dbPath = await getDatabasePath(databaseType, appDataDirPath)
-  
+
   const db = await DatabaseSingleton.instance.initialize({
     type: databaseType,
     path: dbPath,
