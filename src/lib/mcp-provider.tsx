@@ -15,6 +15,7 @@ interface MCPServerConnection {
   enabled: boolean
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface MCPContextType {
   servers: MCPServerConnection[]
   getEnabledClients: () => MCPClient[]
@@ -29,14 +30,18 @@ const MCPContext = createContext<MCPContextType | undefined>(undefined)
 export function MCPProvider({ children }: { children: ReactNode }) {
   const [servers, setServers] = useState<MCPServerConnection[]>([])
   const clientRefs = useRef<Map<string, MCPClient>>(new Map())
+  const serversRef = useRef<MCPServerConnection[]>([])
+
+  // Keep ref in sync with state
+  useEffect(() => {
+    serversRef.current = servers
+  }, [servers])
 
   const createClient = async (url: string): Promise<MCPClient> => {
-    console.log('Creating MCP client for URL:', url)
-    
     // Check if we need to use Tauri fetch for external URLs
     const urlObj = new URL(url)
     const isExternal = !['localhost', '127.0.0.1'].includes(urlObj.hostname)
-    
+
     // Create transport with appropriate implementation
     const transportOptions = {
       requestInit: {
@@ -45,14 +50,10 @@ export function MCPProvider({ children }: { children: ReactNode }) {
         },
       },
     }
-    
+
     // Use Tauri transport for external URLs to bypass CORS
-    const transport = isExternal
-      ? new TauriStreamableHTTPClientTransport(urlObj, transportOptions)
-      : new StreamableHTTPClientTransport(urlObj, transportOptions)
-    
-    console.log(`Using ${isExternal ? 'Tauri' : 'standard'} transport for MCP client`)
-    
+    const transport = isExternal ? new TauriStreamableHTTPClientTransport(urlObj, transportOptions) : new StreamableHTTPClientTransport(urlObj, transportOptions)
+
     const mcpClient = await experimental_createMCPClient({
       transport,
     })
@@ -66,14 +67,14 @@ export function MCPProvider({ children }: { children: ReactNode }) {
     }
 
     try {
-      console.log('Connecting to MCP server:', server.name, server.url)
+      // Connecting to MCP server
       const client = await createClient(server.url)
 
       clientRefs.current.set(server.id, client)
 
       setServers((prev) => prev.map((s) => (s.id === server.id ? { ...s, client, isConnected: true, error: null, enabled: true } : s)))
 
-      console.log('MCP server connected successfully:', server.name)
+      // MCP server connected successfully
     } catch (err) {
       console.error('Failed to connect to MCP server:', server.name, err)
       setServers((prev) => prev.map((s) => (s.id === server.id ? { ...s, client: null, isConnected: false, error: err as Error, enabled: server.enabled } : s)))
@@ -131,20 +132,23 @@ export function MCPProvider({ children }: { children: ReactNode }) {
     const server = servers.find((s) => s.id === serverId)
     if (!server) return
 
-    console.log('Reconnecting MCP server:', server.name)
+    // Reconnecting MCP server
     disconnectServer(serverId)
     await connectServer(server)
   }
 
   const getEnabledClients = (): MCPClient[] => {
-    return servers.filter((server) => server.enabled && server.isConnected && server.client).map((server) => server.client!)
+    // Use ref to always get current servers, avoiding stale closures
+    return serversRef.current.filter((server) => server.enabled && server.isConnected && server.client).map((server) => server.client!)
   }
 
   // Cleanup on unmount
   useEffect(() => {
+    const clientsRef = clientRefs
     return () => {
-      console.log('Cleaning up MCP connections')
-      clientRefs.current.forEach((client, serverId) => {
+      // Cleaning up MCP connections
+      const clients = clientsRef.current
+      clients.forEach((client, serverId) => {
         if (client?.close) {
           try {
             client.close()
@@ -153,7 +157,7 @@ export function MCPProvider({ children }: { children: ReactNode }) {
           }
         }
       })
-      clientRefs.current.clear()
+      clients.clear()
     }
   }, [])
 
