@@ -6,14 +6,14 @@ from typing import Any
 
 import pytest
 
-from main import app, mcp_app, proxy_lifespan
+from main import app, proxy_lifespan
 
 
 # Add a simple test that doesn't require asyncio
-def test_mcp_app_exists() -> None:
+def test_app_exists() -> None:
     """Simple test to verify that pytest discovers the test file."""
-    assert mcp_app is not None
-    print("test_mcp_app_exists was executed")
+    assert app is not None
+    print("test_app_exists was executed")
 
 
 @pytest.mark.asyncio
@@ -27,16 +27,9 @@ async def test_proxy_lifespan() -> None:
     assert True
 
 
-@pytest.mark.asyncio
-async def test_mcp_app_lifespan() -> None:
-    """Test that the MCP app's lifespan is accessible."""
-    assert hasattr(mcp_app, "lifespan"), "MCP app should have a lifespan attribute"
-    assert callable(mcp_app.lifespan), "MCP app's lifespan should be callable"
-
-
 @asynccontextmanager
-async def mock_mcp_lifespan(app: Any) -> AsyncIterator[None]:
-    """Mock MCP lifespan function."""
+async def mock_lifespan(app: Any) -> AsyncIterator[None]:
+    """Mock lifespan function."""
     yield
 
 

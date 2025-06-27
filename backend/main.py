@@ -1,7 +1,7 @@
 import json
 import logging
 from collections.abc import Callable
-from contextlib import AsyncExitStack, asynccontextmanager
+from contextlib import asynccontextmanager
 from functools import lru_cache
 from typing import Any
 
@@ -13,7 +13,7 @@ from fastapi.responses import JSONResponse
 from auth import google_router, microsoft_router
 from config import Settings
 from flower_auth import get_flower_api_key
-from mcp_tools.server import mcp
+from pro_tools import create_pro_tools_app
 from proxy import ProxyConfig, ProxyService, get_proxy_service
 
 
@@ -132,37 +132,18 @@ async def proxy_lifespan(app: FastAPI) -> Any:
     await proxy_service.close()
 
 
-# Create MCP app instance at module level so it can be reused
-mcp_app = mcp.http_app(path="/")
+pro_tools_app = create_pro_tools_app()
 
-
-@asynccontextmanager
-async def combined_lifespan(app: FastAPI) -> Any:
-    """Combined lifespan manager for both proxy service and MCP app."""
-    exit_stack = AsyncExitStack()
-    async with exit_stack:
-        # Enter the proxy lifespan
-        await exit_stack.enter_async_context(proxy_lifespan(app))
-
-        # Enter the MCP app lifespan
-        if hasattr(mcp_app, "lifespan") and mcp_app.lifespan:
-            await exit_stack.enter_async_context(mcp_app.lifespan(app))
-
-        yield
-
-
-# Configure logging
 logging.basicConfig(
     level=getattr(logging, get_settings().log_level),
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 
-# Create FastAPI app instance
 app = FastAPI(
     title="Thunderbolt Backend",
     description="A FastAPI backend with proxy capabilities",
     version="0.1.0",
-    lifespan=combined_lifespan,
+    lifespan=proxy_lifespan,
 )
 
 settings = get_settings()
@@ -182,8 +163,7 @@ app.add_middleware(
     else [],
 )
 
-
-app.mount("/mcp", mcp_app)
+app.mount("/pro", pro_tools_app)
 
 
 @app.get("/health", response_model=dict[str, str])

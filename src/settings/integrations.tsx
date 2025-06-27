@@ -5,6 +5,8 @@ import { Card, CardAction, CardContent, CardFooter, CardHeader, CardTitle } from
 import { Switch } from '@/components/ui/switch'
 import { configs as googleToolConfigs } from '@/integrations/google/tools'
 import { configs as microsoftToolConfigs } from '@/integrations/microsoft/tools'
+import { configs as proToolConfigs } from '@/integrations/thunderbolt-pro/tools'
+import { getProStatus } from '@/integrations/thunderbolt-pro/utils'
 import { exchangeCodeForTokens, getUserInfo, GoogleUserInfo, OAuthTokens, redirectOAuthFlow } from '@/lib/auth'
 import { getSetting, updateSetting } from '@/lib/dal'
 import { startOAuthFlowWebview } from '@/lib/oauth-webview'
@@ -55,11 +57,17 @@ const GoogleIcon = () => (
 )
 
 const MicrosoftIcon = () => (
-  <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-    <rect x="1" y="1" width="10" height="10" fill="#F25022" />
-    <rect x="13" y="1" width="10" height="10" fill="#7FBA00" />
-    <rect x="1" y="13" width="10" height="10" fill="#00A4EF" />
-    <rect x="13" y="13" width="10" height="10" fill="#FFB900" />
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M0 0h11.377v11.372H0V0z" fill="#F25022" />
+    <path d="M12.623 0H24v11.372H12.623V0z" fill="#7FBA00" />
+    <path d="M0 12.628h11.377V24H0V12.628z" fill="#00A4EF" />
+    <path d="M12.623 12.628H24V24H12.623V12.628z" fill="#FFB900" />
+  </svg>
+)
+
+const ThunderboltProIcon = () => (
+  <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M13 2L3 12h7l-2 8 10-10h-7l2-8z" fill="currentColor" className="text-amber-500" />
   </svg>
 )
 
@@ -155,6 +163,10 @@ export default function IntegrationsPage() {
   const loadIntegrations = async () => {
     setLoading(true)
     try {
+      // Thunderbolt Pro integration ----------------------------------------
+      const proStatus = await getProStatus()
+      const proIsEnabled = await getSetting('integrations_pro_is_enabled')
+
       // Google integration --------------------------------------------------
       const gIsEnabled = await getSetting('integrations_google_is_enabled')
       const gCredentials = await getSetting('integrations_google_credentials')
@@ -187,7 +199,17 @@ export default function IntegrationsPage() {
         }
       }
 
-      setIntegrations([
+      const integrations = [
+        {
+          id: 'thunderbolt-pro',
+          name: 'Thunderbolt Pro',
+          provider: 'thunderbolt-pro',
+          connectLabel: 'Get Pro',
+          icon: <ThunderboltProIcon />,
+          isEnabled: proStatus.isProUser && (proIsEnabled === null ? true : proIsEnabled === 'true'),
+          isConnected: proStatus.isProUser,
+          userEmail: proStatus.isProUser ? 'Thunderbolt Pro' : undefined,
+        },
         {
           id: 'google',
           name: 'Google',
@@ -210,7 +232,9 @@ export default function IntegrationsPage() {
           userEmail: mUserEmail,
           credentials: mParsedCredentials,
         },
-      ])
+      ]
+
+      setIntegrations(integrations)
     } catch (error) {
       console.error('Failed to load integrations:', error)
       console.error('Failed to load integrations')
@@ -270,6 +294,13 @@ export default function IntegrationsPage() {
     }
   }
 
+  const handleGetPro = async () => {
+    // For now, just show an alert since this is a placeholder
+    alert(
+      'Thunderbolt Pro upgrade would be handled here. For testing, toggle the IS_PRO_USER constant in src/integrations/thunderbolt-pro/utils.ts',
+    )
+  }
+
   const handleDisconnect = async (integration: Integration) => {
     try {
       await updateSetting(`integrations_${integration.provider}_credentials`, '')
@@ -285,7 +316,13 @@ export default function IntegrationsPage() {
 
   const handleToggleEnabled = async (integration: Integration, enabled: boolean) => {
     try {
-      await updateSetting(`integrations_${integration.provider}_is_enabled`, enabled.toString())
+      // Use shorter setting key for thunderbolt-pro
+      const settingKey =
+        integration.provider === 'thunderbolt-pro'
+          ? 'integrations_pro_is_enabled'
+          : `integrations_${integration.provider}_is_enabled`
+
+      await updateSetting(settingKey, enabled.toString())
 
       setIntegrations((prev) => prev.map((i) => (i.id === integration.id ? { ...i, isEnabled: enabled } : i)))
 
@@ -338,7 +375,9 @@ export default function IntegrationsPage() {
             {!integration.isConnected && (
               <CardContent>
                 <Button
-                  onClick={() => handleConnect(integration)}
+                  onClick={() =>
+                    integration.provider === 'thunderbolt-pro' ? handleGetPro() : handleConnect(integration)
+                  }
                   className="w-full"
                   disabled={connectingProvider !== null}
                 >
@@ -351,6 +390,18 @@ export default function IntegrationsPage() {
                     integration.connectLabel
                   )}
                 </Button>
+              </CardContent>
+            )}
+
+            {integration.isConnected && integration.isEnabled && integration.provider === 'thunderbolt-pro' && (
+              <CardContent className="border-t pt-0">
+                <AvailableTools
+                  className="pt-4"
+                  tools={proToolConfigs.map((config) => ({
+                    name: config.name,
+                    description: config.description,
+                  }))}
+                />
               </CardContent>
             )}
 
@@ -379,9 +430,11 @@ export default function IntegrationsPage() {
             )}
 
             {/* If the account is connected but the integration is disabled, we still want the visual divider */}
-            {integration.isConnected && !integration.isEnabled && <CardContent className="border-t p-0" />}
+            {integration.isConnected && !integration.isEnabled && integration.provider !== 'thunderbolt-pro' && (
+              <CardContent className="border-t p-0" />
+            )}
 
-            {integration.isConnected && (
+            {integration.isConnected && integration.provider !== 'thunderbolt-pro' && (
               <CardFooter>
                 <Button variant="outline" size="sm" onClick={() => handleDisconnect(integration)} className="ml-auto">
                   Disconnect

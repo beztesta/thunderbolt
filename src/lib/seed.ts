@@ -1,7 +1,7 @@
 import { getDefaultCloudUrl } from '@/lib/config'
 import { v7 as uuidv7 } from 'uuid'
 import { DatabaseSingleton } from '../db/singleton'
-import { accountsTable, mcpServersTable, modelsTable, settingsTable, tasksTable } from '../db/tables'
+import { accountsTable, modelsTable, settingsTable, tasksTable } from '../db/tables'
 
 export const seedAccounts = async () => {
   const db = DatabaseSingleton.instance.db
@@ -105,21 +105,6 @@ export const seedSettings = async () => {
     .onConflictDoNothing()
 }
 
-export const seedMcpServers = async () => {
-  const db = DatabaseSingleton.instance.db
-  const existingServers = await db.select().from(mcpServersTable).limit(1)
-
-  if (existingServers.length === 0) {
-    // Use centralized config for default MCP server URL
-    await db.insert(mcpServersTable).values({
-      id: uuidv7(),
-      name: 'Thunderbolt MCP Server',
-      url: `${getDefaultCloudUrl()}/mcp/`,
-      enabled: 1,
-    })
-  }
-}
-
 export const seedTasks = async () => {
   const db = DatabaseSingleton.instance.db
   const existingTasks = await db.select().from(tasksTable).limit(1)
@@ -143,7 +128,7 @@ export const seedTasks = async () => {
     },
     {
       id: uuidv7(),
-      item: "Explore MCP tools to extend Thunderbolt's capabilities",
+      item: 'Explore Thunderbolt Pro tools to extend capabilities',
       order: 300,
       isComplete: 0,
     },

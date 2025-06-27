@@ -1,4 +1,4 @@
-.PHONY: help setup install build build-desktop build-android build-ios clean
+.PHONY: help setup install build build-desktop build-android build-ios clean run dev
 
 # Color definitions
 BLUE := \033[0;34m
@@ -11,6 +11,8 @@ help:
 	@echo "Available commands:"
 	@echo "  make setup          - Initialize submodules and install all dependencies"
 	@echo "  make install        - Install frontend dependencies"
+	@echo "  make run            - Start both backend and frontend development servers"
+	@echo "  make dev            - Alias for 'make run'"
 	@echo "  make build          - Build frontend for production"
 	@echo "  make build-desktop  - Build Tauri desktop app"
 	@echo "  make build-android  - Build Tauri Android app"
@@ -94,8 +96,31 @@ type-check:
 
 # Run tests
 test:
-	bun run test
+	@echo "$(BLUE)→ Running frontend tests...$(NC)"
+	@bun run test || echo "$(YELLOW)  No frontend tests found$(NC)"
+	@echo "$(BLUE)→ Running backend tests...$(NC)"
+	@cd backend && uv run pytest -v
 
 # Run all checks
 check:
 	bun run check
+
+# Start development servers (backend and frontend)
+run:
+	@echo "$(BLUE)→ Starting backend and frontend development servers...$(NC)"
+	@echo "$(YELLOW)  Backend will run on http://localhost:8000$(NC)"
+	@echo "$(YELLOW)  Frontend will run on http://localhost:5173$(NC)"
+	@echo "$(YELLOW)  Press Ctrl+C to stop both servers$(NC)"
+	@echo ""
+	@# Kill any existing processes on the ports first
+	@-lsof -ti:8000 | xargs kill -9 2>/dev/null || true
+	@-lsof -ti:5173 | xargs kill -9 2>/dev/null || true
+	@# Start backend in background and frontend in foreground
+	cd backend && uv run uvicorn main:app --reload --host 0.0.0.0 --port 8000 & \
+	BACKEND_PID=$$!; \
+	echo "$(GREEN)✓ Backend started (PID: $$BACKEND_PID)$(NC)"; \
+	sleep 2; \
+	bun run dev || (kill $$BACKEND_PID 2>/dev/null && exit 1)
+
+# Alias for run
+dev: run

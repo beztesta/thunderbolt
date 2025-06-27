@@ -7,7 +7,7 @@ import OAuthCallback from '@/components/oauth-callback'
 import { SidebarProvider } from '@/components/ui/sidebar'
 import { useMcpSync } from '@/hooks/use-mcp-sync'
 import { getOrCreateChatThread } from '@/lib/dal'
-import { seedAccounts, seedMcpServers, seedModels, seedSettings, seedTasks } from '@/lib/seed'
+import { seedAccounts, seedModels, seedSettings, seedTasks } from '@/lib/seed'
 import { ThemeProvider } from '@/lib/theme-provider'
 import AccountsSettingsPage from '@/settings/accounts'
 import DevSettingsPage from '@/settings/dev-settings'
@@ -88,10 +88,9 @@ const init = async (): Promise<InitData> => {
 
   await migrate(db)
 
-  await seedAccounts()
   await seedModels()
   await seedSettings()
-  await seedMcpServers()
+  await seedAccounts()
   await seedTasks()
 
   const imap = new ImapClient()
