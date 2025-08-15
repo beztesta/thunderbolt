@@ -15,6 +15,7 @@ import {
   SidebarTrigger,
   useSidebar,
 } from '@/components/ui/sidebar'
+import { DeleteAllChatsDialog, DeleteAllChatsDialogRef } from '@/components/delete-all-chats-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { chatThreadsTable } from '@/db/tables'
 import { useDatabase } from '@/hooks/use-database'
@@ -37,7 +38,9 @@ import {
   SquarePen,
   Zap,
 } from 'lucide-react'
+import { useRef } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
+import { DeleteChatDialog, DeleteChatDialogRef } from '@/components/delete-chat-dialog'
 
 export default function ChatSidebar() {
   const navigate = useNavigate()
@@ -46,6 +49,9 @@ export default function ChatSidebar() {
   const queryClient = useQueryClient()
   const { setOpenMobile } = useSidebar()
   const isMobile = useIsMobile()
+  const deleteAllChatsDialogRef = useRef<DeleteAllChatsDialogRef>(null)
+  const deleteChatDialogRef = useRef<DeleteChatDialogRef>(null)
+  const threadIdRef = useRef<string>(null)
 
   const { chatThreadId: currentChatThreadId } = useParams()
 
@@ -64,6 +70,8 @@ export default function ChatSidebar() {
       await db.delete(chatThreadsTable).where(eq(chatThreadsTable.id, id))
     },
     onSuccess: () => {
+      deleteChatDialogRef.current?.close()
+      threadIdRef.current = null
       queryClient.invalidateQueries({ queryKey: ['chatThreads'] })
     },
   })
@@ -76,6 +84,7 @@ export default function ChatSidebar() {
       return chatThreadId
     },
     onSuccess: async (chatThreadId) => {
+      deleteAllChatsDialogRef.current?.close()
       // Invalidate queries after the new thread is created
       await queryClient.invalidateQueries({ queryKey: ['chatThreads'] })
       navigate(`/chats/${chatThreadId}`)
@@ -277,7 +286,7 @@ export default function ChatSidebar() {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <SidebarMenuButton
-                    onClick={() => deleteAllChatsMutation.mutate()}
+                    onClick={() => deleteAllChatsDialogRef.current?.open()}
                     className="w-fit pr-0 pl-0 aspect-square items-center justify-center cursor-pointer"
                     disabled={deleteAllChatsMutation.isPending}
                   >
@@ -314,7 +323,8 @@ export default function ChatSidebar() {
                   <DropdownMenuContent side="right" align="start" className="min-w-56 rounded-lg">
                     <DropdownMenuItem
                       onClick={() => {
-                        deleteChatMutation.mutate({ id: thread.id })
+                        threadIdRef.current = thread.id
+                        deleteChatDialogRef.current?.open()
                       }}
                       disabled={deleteChatMutation.isPending}
                     >
@@ -330,6 +340,14 @@ export default function ChatSidebar() {
         <SidebarFooter />
       </SidebarContent>
       <SidebarRail />
+      <DeleteAllChatsDialog onConfirm={() => deleteAllChatsMutation.mutate()} ref={deleteAllChatsDialogRef} />
+      <DeleteChatDialog
+        onCancel={() => {
+          threadIdRef.current = null
+        }}
+        onConfirm={() => threadIdRef.current && deleteChatMutation.mutate({ id: threadIdRef.current })}
+        ref={deleteChatDialogRef}
+      />
     </Sidebar>
   )
 }
