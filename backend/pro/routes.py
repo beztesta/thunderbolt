@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 from .context import SimpleContext
 from .duckduckgo import DuckDuckGoSearcher
-from .exa import ExaSearcher
+from .exa import create_exa_client, fetch_content_exa, search_exa
 from .models import (
     FetchContentRequest,
     FetchContentResponse,
@@ -18,16 +18,10 @@ from .models import (
     WeatherResponse,
 )
 from .openmeteo import OpenMeteoWeather
-from .web_content_fetcher import WebContentFetcher
 
 # Initialize the tool clients
 ddg_searcher = DuckDuckGoSearcher()
-try:
-    exa_searcher = ExaSearcher()
-except ValueError:
-    # Exa API key not configured
-    exa_searcher = None
-fetcher = WebContentFetcher()
+exa_client = create_exa_client()
 weather_client = OpenMeteoWeather()
 
 
@@ -50,7 +44,7 @@ def create_pro_tools_app() -> FastAPI:
     @app.post("/search-exa", response_model=SearchResponse)
     async def search_exa_endpoint(request: SearchRequest) -> SearchResponse:
         """Search using Exa AI and return formatted results with better relevance and content extraction."""
-        if not exa_searcher:
+        if not exa_client:
             return SearchResponse(
                 results="",
                 success=False,
@@ -59,8 +53,19 @@ def create_pro_tools_app() -> FastAPI:
 
         try:
             ctx = SimpleContext()
-            results = await exa_searcher.search(request.query, ctx, request.max_results)
-            formatted = exa_searcher.format_results_for_llm(results)
+            results = await search_exa(request.query, ctx, request.max_results)
+
+            # Format results for LLM - Exa SDK already provides LLM-optimized format
+            if not results:
+                formatted = "No results found."
+            else:
+                formatted_results = []
+                for r in results:
+                    formatted_results.append(f"{r['position']}. {r['title']}")
+                    formatted_results.append(f"   URL: {r['url']}")
+                    if r.get("snippet"):
+                        formatted_results.append(f"   {r['snippet']}")
+                formatted = "\n".join(formatted_results)
 
             return SearchResponse(results=formatted, success=True)
         except Exception as e:
@@ -70,14 +75,29 @@ def create_pro_tools_app() -> FastAPI:
     async def fetch_content_endpoint(
         request: FetchContentRequest,
     ) -> FetchContentResponse:
-        """Fetch and parse content from a webpage URL"""
-        try:
-            ctx = SimpleContext()
-            content = await fetcher.fetch_and_parse(request.url, ctx)
+        """Fetch and parse content from a webpage URL using Exa's privacy-protected proxy.
 
-            return FetchContentResponse(content=content, success=True)
-        except Exception as e:
-            return FetchContentResponse(content="", success=False, error=str(e))
+        Returns whatever Exa returns to the user. If Exa is not configured,
+        returns an error indicating the service is unavailable.
+        """
+        ctx = SimpleContext()
+
+        # Require Exa to be configured
+        if not exa_client:
+            return FetchContentResponse(
+                content="",
+                success=False,
+                error="Content fetching service is not configured. Please set the EXA_API_KEY environment variable.",
+            )
+
+        # Use Exa for privacy-protected fetching
+        content = await fetch_content_exa(request.url, ctx)
+
+        # Check if Exa returned an error message
+        if content.startswith("Error:"):
+            return FetchContentResponse(content="", success=False, error=content)
+
+        return FetchContentResponse(content=content, success=True)
 
     @app.post("/weather/current", response_model=WeatherResponse)
     async def current_weather_endpoint(request: WeatherRequest) -> WeatherResponse:

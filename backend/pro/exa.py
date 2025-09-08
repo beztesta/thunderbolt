@@ -1,129 +1,117 @@
 """
-Exa AI search functionality
+Exa AI client wrapper for privacy-protected search and content fetching
 """
 
-import sys
-import traceback
-from dataclasses import dataclass
+import os
 from typing import Any
 
-import httpx
+from exa_py import Exa
 
 from config import Settings
 
 from .context import SimpleContext
 
 
-@dataclass
-class ExaSearchResult:
-    title: str
-    url: str
-    snippet: str
-    position: int
-    author: str | None = None
-    published_date: str | None = None
+def create_exa_client() -> Exa | None:
+    """
+    Create an Exa client instance if API key is configured.
+
+    Returns:
+        Exa client instance or None if API key is not set
+    """
+    settings = Settings()
+    api_key = settings.exa_api_key or os.getenv("EXA_API_KEY")
+
+    if not api_key:
+        return None
+
+    return Exa(api_key=api_key)
 
 
-class ExaSearcher:
-    """Exa AI searcher using their neural search API"""
+async def search_exa(
+    query: str, ctx: SimpleContext, max_results: int = 10
+) -> list[dict[str, Any]]:
+    """
+    Search using Exa's neural search API.
 
-    BASE_URL = "https://api.exa.ai"
+    Args:
+        query: Search query string
+        ctx: Context for logging
+        max_results: Maximum number of results to return
 
-    def __init__(self, api_key: str | None = None):
-        settings = Settings()
-        self.api_key = api_key or settings.exa_api_key
-        if not self.api_key:
-            raise ValueError(
-                "EXA_API_KEY must be set in environment variables or .env file"
+    Returns:
+        List of search result dictionaries
+    """
+    client = create_exa_client()
+    if not client:
+        await ctx.error("Exa API key not configured")
+        return []
+
+    try:
+        await ctx.info(f"Searching Exa for: {query}")
+
+        # Use Exa's search with autoprompt for better results
+        response = client.search(
+            query, num_results=max_results, use_autoprompt=True, type="neural"
+        )
+
+        # Convert results to dictionary format for compatibility
+        results = []
+        for idx, result in enumerate(response.results, 1):
+            results.append(
+                {
+                    "position": idx,
+                    "title": result.title,
+                    "url": result.url,
+                    "snippet": getattr(result, "extract", "")
+                    or getattr(result, "text", ""),
+                    "author": getattr(result, "author", None),
+                    "published_date": getattr(result, "published_date", None),
+                }
             )
 
-    async def search(
-        self, query: str, ctx: SimpleContext, max_results: int = 10
-    ) -> list[dict[str, Any]]:
-        """Search using Exa AI and return results"""
-        try:
-            headers = {"x-api-key": self.api_key, "Content-Type": "application/json"}
+        await ctx.info(f"Found {len(results)} results")
+        return results
 
-            # Exa search request payload
-            payload = {
-                "query": query,
-                "num_results": max_results,
-                "type": "auto",  # Let Exa decide between neural and keyword search
-                "contents": {
-                    "text": True  # Get text content for each result
-                },
-            }
+    except Exception as e:
+        await ctx.error(f"Exa search error: {str(e)}")
+        raise
 
-            await ctx.info(f"Searching Exa AI for: {query}")
 
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.BASE_URL}/search",
-                    json=payload,
-                    headers=headers,
-                    timeout=30.0,
-                )
-                response.raise_for_status()
+async def fetch_content_exa(url: str, ctx: SimpleContext) -> str:
+    """
+    Fetch content from a URL using Exa's privacy-protected proxy.
 
-            data = response.json()
-            results = data.get("results", [])
+    Args:
+        url: URL to fetch content from
+        ctx: Context for logging
 
-            await ctx.info(f"Successfully found {len(results)} results from Exa")
+    Returns:
+        Content string or error message
+    """
+    client = create_exa_client()
+    if not client:
+        return "Error: Exa API key not configured"
 
-            # Convert to the expected format
-            formatted_results = []
-            for i, result in enumerate(results):
-                formatted_results.append(
-                    {
-                        "title": result.get("title", ""),
-                        "url": result.get("url", ""),
-                        "snippet": result.get("text", "")[:300] + "..."
-                        if result.get("text")
-                        else "",
-                        "position": i + 1,
-                        "author": result.get("author"),
-                        "published_date": result.get("published_date"),
-                    }
-                )
+    try:
+        await ctx.info(f"Fetching content from: {url}")
 
-            return formatted_results
+        # Use Exa's get_contents method
+        response = client.get_contents(
+            [url],
+            text={
+                "max_characters": 8000,
+                "include_html_tags": False,
+            },
+        )
 
-        except httpx.HTTPStatusError as e:
-            if e.response.status_code == 401:
-                await ctx.error("Invalid Exa API key")
-            elif e.response.status_code == 429:
-                await ctx.error("Exa API rate limit exceeded")
-            else:
-                await ctx.error(
-                    f"Exa API error: {e.response.status_code} - {e.response.text}"
-                )
-            return []
-        except httpx.TimeoutException:
-            await ctx.error("Exa search request timed out")
-            return []
-        except Exception as e:
-            await ctx.error(f"Unexpected error during Exa search: {str(e)}")
-            traceback.print_exc(file=sys.stderr)
-            return []
+        if response.contents and len(response.contents) > 0:
+            content = response.contents[0]
+            # Return the text content
+            return getattr(content, "text", "") or getattr(content, "extract", "")
+        else:
+            return "Error: No content found for the provided URL"
 
-    def format_results_for_llm(self, results: list[dict[str, Any]]) -> str:
-        """Format results in a natural language style that's easier for LLMs to process"""
-        if not results:
-            return "No results were found for your search query. Please try rephrasing your search."
-
-        output = []
-        output.append(f"Found {len(results)} search results from Exa AI:\n")
-
-        for result in results:
-            output.append(
-                f"{result.get('position', 0)}. {result.get('title', 'No title')}"
-            )
-            output.append(f"   URL: {result.get('url', '')}")
-            if result.get("author"):
-                output.append(f"   Author: {result['author']}")
-            if result.get("published_date"):
-                output.append(f"   Published: {result['published_date']}")
-            output.append(f"   Summary: {result.get('snippet', '')}")
-            output.append("")  # Empty line between results
-
-        return "\n".join(output)
+    except Exception as e:
+        await ctx.error(f"Exa content fetch error: {str(e)}")
+        return f"Error: {str(e)}"

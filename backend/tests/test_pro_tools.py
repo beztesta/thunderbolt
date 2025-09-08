@@ -1,6 +1,6 @@
 """Test pro tools functionality."""
 
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 import pytest
 from fastapi.testclient import TestClient
@@ -80,11 +80,15 @@ class TestProToolsEndpoints:
             assert data["success"] is True
             assert "results" in data
 
-    @patch("pro.web_content_fetcher.WebContentFetcher.fetch_and_parse")
+    @patch("pro.routes.fetch_content_exa")
+    @patch("pro.routes.exa_client")
     def test_fetch_content_endpoint_success(
-        self, mock_fetch: AsyncMock, client: TestClient
+        self, mock_exa_client: Mock, mock_fetch: AsyncMock, client: TestClient
     ) -> None:
-        """Test successful fetch-content endpoint response."""
+        """Test successful fetch-content endpoint response using Exa proxy."""
+        # Mock the Exa client to exist
+        mock_exa_client.return_value = Mock()
+        # Mock the fetch_content_exa function
         mock_fetch.return_value = "Fetched content"
 
         response = client.post(
@@ -95,6 +99,7 @@ class TestProToolsEndpoints:
         data = response.json()
         assert data["success"] is True
         assert "content" in data
+        assert data["content"] == "Fetched content"
 
     @patch("pro.openmeteo.OpenMeteoWeather.get_current_weather")
     def test_weather_current_endpoint_success(
