@@ -45,16 +45,28 @@ type AuthProviderProps = {
 }
 
 export const AuthProvider = ({ children, authClient: overrideClient }: AuthProviderProps) => {
-  const { cloudUrl } = useSettings({ cloud_url: 'http://localhost:8000/v1' })
+  const { cloudUrl } = useSettings({ cloud_url: String })
 
   const value = useMemo(() => {
     if (overrideClient) {
       return { authClient: overrideClient }
     }
 
+    // Don't create auth client until cloudUrl is loaded from settings
+    // This prevents Better Auth from making requests to the fallback localhost URL
+    if (cloudUrl.isLoading || !cloudUrl.value) {
+      return null
+    }
+
     const client = createAuthClientInstance(cloudUrl.value)
     return { authClient: client }
-  }, [cloudUrl.value, overrideClient])
+  }, [cloudUrl.value, cloudUrl.isLoading, overrideClient])
+
+  // Wait for auth client to be ready before rendering children
+  // This prevents useSession from triggering requests to wrong URL
+  if (!value) {
+    return null
+  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
