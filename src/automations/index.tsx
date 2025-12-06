@@ -10,7 +10,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
-import { PageHeader } from '@/components/ui/page-header'
 import { ButtonGroup, ButtonGroupItem } from '@/components/ui/button-group'
 import { Card, CardContent } from '@/components/ui/card'
 import { SearchInput } from '@/components/ui/search-input'
@@ -101,11 +100,11 @@ export default function AutomationsPage() {
     <div className="flex flex-col overflow-hidden">
       <div className="flex-1">
         <div className="flex flex-col gap-6 p-4 w-full max-w-[1200px] mx-auto">
-          <PageHeader title="Automations">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h1 className="mt-8 text-4xl font-bold tracking-tight">Automations</h1>
             <Button
-              variant="outline"
               size="icon"
-              className="rounded-lg"
               onClick={() => {
                 setIsCreateModalOpen(true)
                 trackEvent('automation_modal_create_open')
@@ -113,7 +112,7 @@ export default function AutomationsPage() {
             >
               <Plus className="h-4 w-4" />
             </Button>
-          </PageHeader>
+          </div>
 
           {/* Search */}
           <SearchInput

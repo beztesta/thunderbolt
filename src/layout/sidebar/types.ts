@@ -25,7 +25,6 @@ export type ChatListProps = {
   chatThreads: ChatThread[]
   currentChatThreadId?: string
   isCollapsed: boolean
-  isMobile: boolean
   debouncedSearchQuery: string
   deleteAllChatsMutation: DeleteAllChatsMutationType
   deleteChatMutation: DeleteChatMutationType
@@ -44,7 +43,6 @@ export type ChatListItemProps = {
   thread: ChatThread
   isActive: boolean
   isCollapsed: boolean
-  isMobile: boolean
   deleteChatMutation: DeleteChatMutationType
   threadIdRef: RefObject<string | null>
   deleteChatDialogRef: RefObject<DeleteChatDialogRef | null>

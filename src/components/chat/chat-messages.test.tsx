@@ -148,8 +148,8 @@ describe('ChatMessages', () => {
         wrapper: createQueryTestWrapper(),
       })
 
-      // EncryptionMessage should be rendered with the confidential text
-      expect(container.textContent).toContain('This conversation is confidential')
+      // EncryptionMessage should be rendered with the encryption text
+      expect(container.textContent).toContain('This conversation is encrypted')
     })
   })
 

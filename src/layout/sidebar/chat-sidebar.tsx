@@ -87,7 +87,6 @@ export const ChatSidebarContent = ({
         chatThreads={chatThreads}
         currentChatThreadId={currentChatThreadId}
         isCollapsed={isCollapsed}
-        isMobile={isMobile}
         debouncedSearchQuery={debouncedSearchQuery}
         deleteAllChatsMutation={deleteAllChatsMutation}
         deleteChatMutation={deleteChatMutation}

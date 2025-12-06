@@ -1,6 +1,5 @@
 import { ModificationIndicator } from '@/components/modification-indicator'
 import { Input } from '@/components/ui/input'
-import { PageHeader } from '@/components/ui/page-header'
 import { SectionCard } from '@/components/ui/section-card'
 import { Switch } from '@/components/ui/switch'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -23,7 +22,7 @@ export default function DevSettingsPage() {
 
   return (
     <div className="flex flex-col gap-6 p-4 w-full max-w-[760px] mx-auto">
-      <PageHeader title="Developer Settings" />
+      <h1 className="mt-8 text-4xl font-bold tracking-tight mb-2 text-primary">Developer Settings</h1>
 
       <SectionCard title="Network">
         <div className="flex flex-col gap-8">

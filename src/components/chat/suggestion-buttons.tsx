@@ -10,7 +10,7 @@ interface SuggestionButtonProps {
 const SuggestionButton = ({ label, prompt, onSelect }: SuggestionButtonProps) => (
   <Button
     variant="outline"
-    className="bg-card text-sm text-foreground rounded-full px-3 py-1.5 border border-border hover:bg-accent whitespace-nowrap flex-shrink-0 shadow-none"
+    className="bg-card text-sm text-foreground rounded-full px-3 py-1.5 border border-border shadow-sm hover:bg-accent whitespace-nowrap flex-shrink-0"
     onClick={() => onSelect(prompt)}
   >
     {label}
@@ -32,7 +32,7 @@ export const SuggestionButtons = memo(({ onSelectPrompt }: { onSelectPrompt: (pr
   ]
 
   return (
-    <div className="flex gap-3 justify-start w-full max-w-[696px] mx-auto overflow-x-auto scrollbar-hide pb-px">
+    <div className="flex flex-wrap gap-2 justify-center mt-4 w-full max-w-[696px] mx-auto">
       {suggestions.map((suggestion, index) => (
         <SuggestionButton key={index} label={suggestion.label} prompt={suggestion.prompt} onSelect={onSelectPrompt} />
       ))}

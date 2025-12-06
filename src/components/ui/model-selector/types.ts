@@ -1,5 +1,5 @@
-import type { ChatThread } from '@/layout/sidebar/types'
 import type { Model } from '@/types'
+import type { ChatThread } from '@/layout/sidebar/types'
 
 export type ModelSelectorProps = {
   models: Model[]
@@ -7,4 +7,9 @@ export type ModelSelectorProps = {
   chatThread: ChatThread | null
   onModelChange: (modelId: string) => void
   onAddModels?: () => void
+}
+
+export type CategorizedModels = {
+  provided: Model[]
+  custom: Model[]
 }
