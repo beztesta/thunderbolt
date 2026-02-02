@@ -162,6 +162,21 @@ jobs:
           # Clean up certificate
           rm certificate.p12
 
+          # List available signing identities for debugging
+          echo "Available signing identities:"
+          security find-identity -v -p codesigning build.keychain
+
+          # Auto-detect signing identity from imported certificate
+          # Extract the identity name (everything between quotes in the output)
+          DETECTED_IDENTITY=$(security find-identity -v -p codesigning build.keychain | grep -o '"[^"]*"' | head -1 | tr -d '"')
+
+          if [ -z "$DETECTED_IDENTITY" ]; then
+            echo "❌ No valid signing identity found in keychain"
+            exit 1
+          fi
+
+          echo "✅ Detected signing identity: $DETECTED_IDENTITY"
+
           # Setup App Store Connect API key
           mkdir -p ~/private_keys
           if echo "$APP_STORE_CONNECT_API_KEY" | base64 --decode > ~/private_keys/AuthKey_$APP_STORE_CONNECT_API_KEY_ID.p8 2>/dev/null; then
@@ -171,8 +186,8 @@ jobs:
           fi
           chmod 600 ~/private_keys/AuthKey_$APP_STORE_CONNECT_API_KEY_ID.p8
 
-          # Export notarization env vars for subsequent steps
-          echo "APPLE_SIGNING_IDENTITY=$APPLE_SIGNING_IDENTITY" >> $GITHUB_ENV
+          # Export notarization env vars for subsequent steps (use detected identity)
+          echo "APPLE_SIGNING_IDENTITY=$DETECTED_IDENTITY" >> $GITHUB_ENV
           echo "APPLE_API_ISSUER=$APP_STORE_CONNECT_ISSUER_ID" >> $GITHUB_ENV
           echo "APPLE_API_KEY=$APP_STORE_CONNECT_API_KEY_ID" >> $GITHUB_ENV
           echo "APPLE_API_KEY_PATH=$HOME/private_keys/AuthKey_$APP_STORE_CONNECT_API_KEY_ID.p8" >> $GITHUB_ENV
