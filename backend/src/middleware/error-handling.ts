@@ -1,5 +1,5 @@
-import type { Context, ErrorHandler } from 'elysia'
-import { Elysia } from 'elysia'
+import type { ErrorHandler } from 'elysia'
+import { Elysia, InvertedStatusMap } from 'elysia'
 
 export type ErrorResponse = {
   success: false
@@ -7,19 +7,9 @@ export type ErrorResponse = {
   error: string
 }
 
-export const STATUS_MESSAGES: Record<number, string> = {
-  400: 'Bad request',
-  401: 'Unauthorized',
-  403: 'Forbidden',
-  404: 'Not found',
-  409: 'Conflict',
-  422: 'Unprocessable entity',
-  429: 'Too many requests',
-  500: 'An unexpected error occurred',
-  502: 'Bad gateway',
-  503: 'Service temporarily unavailable',
-  504: 'Gateway timeout',
-}
+type ErrorWithStatus = Error & { status: number }
+
+const hasStatus = (error: Error): error is ErrorWithStatus => 'status' in error && typeof error.status === 'number'
 
 /**
  * Create a standardized error response object
@@ -31,17 +21,18 @@ export const createErrorResponse = (message: string): ErrorResponse => ({
 })
 
 /**
- * Get a safe, generic error message for a given status code
- * SECURITY: Never returns internal error details - only predefined messages
+ * Get a safe, generic error message for a given status code.
+ * SECURITY: Never returns internal error details - only standard HTTP reason phrases.
  */
-export const getSafeErrorMessage = (status: number): string => STATUS_MESSAGES[status] ?? 'An unexpected error occurred'
+export const getSafeErrorMessage = (status: number): string =>
+  (InvertedStatusMap as Record<number, string>)[status] ?? 'An unexpected error occurred'
 
 /**
  * Extract HTTP status code from an error, defaulting to 500
  */
 export const getErrorStatus = (error: unknown, fallbackStatus: number = 500): number => {
-  if (error instanceof Error && 'status' in error && typeof (error as any).status === 'number') {
-    return (error as any).status
+  if (error instanceof Error && hasStatus(error)) {
+    return error.status
   }
   return fallbackStatus
 }
@@ -55,7 +46,7 @@ export const getErrorStatus = (error: unknown, fallbackStatus: number = 500): nu
  * new Elysia().onError(safeErrorHandler).get('/route', ...)
  * ```
  */
-export const safeErrorHandler: ErrorHandler = ({ code, error, set }) => {
+export const safeErrorHandler: ErrorHandler = ({ code, error, set, request }) => {
   // Let Elysia handle validation errors with its default behavior (422 status)
   // These are user-facing and safe to expose
   if (code === 'VALIDATION') {
@@ -71,8 +62,13 @@ export const safeErrorHandler: ErrorHandler = ({ code, error, set }) => {
   const status = getErrorStatus(error, currentStatus)
   set.status = status
 
-  if (error instanceof Error) {
-    console.error(`[${status}] ${error.message}`, error.stack)
+  const route = `${request.method} ${new URL(request.url).pathname}`
+  console.error(`[${status}] ${route} — ${error instanceof Error ? error.message : String(error)}`)
+  if (error instanceof Error && error.stack) {
+    console.error(error.stack)
+  }
+  if (error instanceof Error && error.cause) {
+    console.error('Caused by:', error.cause)
   }
 
   return createErrorResponse(getSafeErrorMessage(status))
