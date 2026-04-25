@@ -1,7 +1,11 @@
 name: Nomad Build APK
 
 on:
-  workflow_dispatch: # To pozwala Ci odpalić to ręcznie z przycisku na Pixelu
+  workflow_dispatch:
+
+# Ubijamy korporacyjne ostrzeżenia o starym środowisku Node
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   build:
@@ -14,15 +18,18 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17' # Android zazwyczaj lubi 17-tkę
+          java-version: '17' # Jeśli to nowszy projekt, być może będzie trzeba zmienić na '21'
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      # Tryb QA: Dodajemy --stacktrace i --info, żeby widzieć bebechy procesu
       - name: Build Debug APK
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleDebug --stacktrace --info
 
+      # Zabezpieczenie: Zrzucamy to, co się zbudowało (nawet logi), niezależnie od tego, czy wywali błąd
       - name: Upload APK Drop
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Thunderbolt-Nomad-APK
